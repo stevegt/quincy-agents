@@ -17,10 +17,15 @@ var listCmd = &cobra.Command{
 		activeOnly, _ := cmd.Flags().GetBool("active")
 		tagsFilter, _ := cmd.Flags().GetString("tags")
 		showTags, _ := cmd.Flags().GetBool("show-tags")
+		configFile, _ := cmd.Flags().GetString("config")
 
-		config, err := toml.Parse("AGENTS.toml")
+		if configFile == "" {
+			configFile = "AGENTS.toml"
+		}
+
+		config, err := toml.Parse(configFile)
 		if err != nil {
-			return fmt.Errorf("failed to parse AGENTS.toml: %w", err)
+			return fmt.Errorf("failed to parse %s: %w", configFile, err)
 		}
 
 		var resolver *scope.Resolver
@@ -80,4 +85,5 @@ func init() {
 	listCmd.Flags().Bool("active", false, "Show only active modules")
 	listCmd.Flags().String("tags", "", "Filter by tags (comma-separated)")
 	listCmd.Flags().Bool("show-tags", false, "Show tags for each module")
+	listCmd.Flags().StringP("config", "c", "AGENTS.toml", "Path to AGENTS.toml config file")
 }

@@ -13,12 +13,17 @@ var tagsCmd = &cobra.Command{
 	Short: "List all tags across modules",
 	Long:  "Scan all modules and show which tags are available",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := toml.Parse("AGENTS.toml")
-		if err != nil {
-			return fmt.Errorf("failed to parse AGENTS.toml: %w", err)
+		configFile, _ := cmd.Flags().GetString("config")
+		filter, _ := cmd.Flags().GetString("filter")
+
+		if configFile == "" {
+			configFile = "AGENTS.toml"
 		}
 
-		filter, _ := cmd.Flags().GetString("filter")
+		config, err := toml.Parse(configFile)
+		if err != nil {
+			return fmt.Errorf("failed to parse %s: %w", configFile, err)
+		}
 
 		tagSet := make(map[string]bool)
 
@@ -59,4 +64,5 @@ var tagsCmd = &cobra.Command{
 
 func init() {
 	tagsCmd.Flags().String("filter", "", "Filter tags by prefix (e.g., 'team' or 'lang')")
+	tagsCmd.Flags().StringP("config", "c", "AGENTS.toml", "Path to AGENTS.toml config file")
 }
