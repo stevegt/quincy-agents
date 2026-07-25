@@ -3,7 +3,9 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,37 +47,48 @@ func runInit(cmd *cobra.Command, args []string) error {
 		writeInteractive(&config)
 	}
 
-	config.WriteString("[output]\n")
+	config.WriteString("\n[output]\n")
 	config.WriteString("path = \"AGENTS.md\"\n")
 
 	if err := os.WriteFile("AGENTS.toml", []byte(config.String()), 0644); err != nil {
 		return fmt.Errorf("failed to write AGENTS.toml: %w", err)
 	}
 
-	fmt.Println("Created AGENTS.toml")
+	fmt.Println("\nCreated AGENTS.toml")
 	fmt.Println("Run 'mogent build' to assemble your AGENTS.md")
 
 	return nil
 }
 
 func writeDefaults(config *strings.Builder) {
-	config.WriteString("[order]\ncategories = [\"base\", \"coding\"]\n\n")
+	config.WriteString("[order]\ncategories = [\"identity\", \"instructions\", \"constraints\", \"format\"]\n\n")
 
-	config.WriteString("[category.base]\n")
-	config.WriteString("[[category.base.module]]\n")
-	config.WriteString("name = \"project-structure\"\n")
-	config.WriteString("source = \"base/project-structure.md\"\n\n")
+	config.WriteString("[category.identity]\n")
+	config.WriteString("[[category.identity.module]]\n")
+	config.WriteString("name = \"identity\"\n")
+	config.WriteString("source = \"identity.md\"\n\n")
 
-	config.WriteString("[category.coding]\n")
-	config.WriteString("[[category.coding.module]]\n")
-	config.WriteString("name = \"style\"\n")
-	config.WriteString("source = \"coding/style.md\"\n\n")
+	config.WriteString("[category.instructions]\n")
+	config.WriteString("[[category.instructions.module]]\n")
+	config.WriteString("name = \"instructions\"\n")
+	config.WriteString("source = \"instructions.md\"\n\n")
+
+	config.WriteString("[category.constraints]\n")
+	config.WriteString("[[category.constraints.module]]\n")
+	config.WriteString("name = \"constraints\"\n")
+	config.WriteString("source = \"constraints.md\"\n\n")
+
+	config.WriteString("[category.format]\n")
+	config.WriteString("[[category.format.module]]\n")
+	config.WriteString("name = \"format\"\n")
+	config.WriteString("source = \"format.md\"\n\n")
 
 	config.WriteString("[activate]\nscopes = []\n")
 }
 
 func writeInteractive(config *strings.Builder) {
 	reader := bufio.NewReader(os.Stdin)
+	knownTags := make(map[string]bool)
 
 	fmt.Println("=== Mogent Init ===\n")
 
@@ -91,10 +104,10 @@ func writeInteractive(config *strings.Builder) {
 	config.WriteString("]\n\n")
 
 	for _, cat := range categories {
-		writeCategorySection(config, reader, cat)
+		writeCategorySection(config, reader, cat, knownTags)
 	}
 
-	scopes := promptScopes(reader)
+	scopes := promptScopes(reader, knownTags)
 	config.WriteString("[activate]\nscopes = [")
 	for i, scope := range scopes {
 		if i > 0 {
@@ -106,15 +119,15 @@ func writeInteractive(config *strings.Builder) {
 }
 
 func promptCategoryList(reader *bufio.Reader) []string {
-	fmt.Println("Categories define groups of modules (e.g., base, coding, team).")
+	fmt.Println("Categories define groups of modules (e.g., identity, instructions, constraints, format).")
 	fmt.Println("Enter categories separated by commas, or press Enter for defaults:")
-	fmt.Print("Categories [base,coding]: ")
+	fmt.Print("Categories [identity,instructions,constraints,format]: ")
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 
 	if input == "" {
-		return []string{"base", "coding"}
+		return []string{"identity", "instructions", "constraints", "format"}
 	}
 
 	var cats []string
@@ -127,12 +140,12 @@ func promptCategoryList(reader *bufio.Reader) []string {
 	return cats
 }
 
-func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string) {
+func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, knownTags map[string]bool) {
 	fmt.Printf("\n--- Category: %s ---\n", category)
 
 	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
 
-	tags := promptTags(reader, fmt.Sprintf("Tags for '%s' (comma-separated, or empty)", category))
+	tags := promptTags(reader, "Tags for category (comma-separated, or empty)", knownTags)
 	if len(tags) > 0 {
 		config.WriteString("tags = [")
 		for i, t := range tags {
@@ -140,6 +153,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 				config.WriteString(", ")
 			}
 			config.WriteString(fmt.Sprintf("\"%s\"", t))
+			knownTags[t] = true
 		}
 		config.WriteString("]\n")
 	}
@@ -148,53 +162,73 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 
 	for {
 		fmt.Printf("Add module to '%s'? [Y/n]: ", category)
-		answer, _ := reader.ReadString('\n')
-		answer = strings.TrimSpace(strings.ToLower(answer))
-		if answer == "n" || answer == "no" {
+		input, err := reader.ReadString('\n')
+		if err == io.EOF {
 			break
 		}
-
-		writeModuleSection(config, reader, category)
-	}
-}
-
-func writeModuleSection(config *strings.Builder, reader *bufio.Reader, category string) {
-	fmt.Print("Module name: ")
-	name, _ := reader.ReadString('\n')
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return
-	}
-
-	fmt.Printf("Source path (relative to module_dir or absolute) [%s.md]: ", name)
-	source, _ := reader.ReadString('\n')
-	source = strings.TrimSpace(source)
-	if source == "" {
-		source = name + ".md"
-	}
-
-	config.WriteString(fmt.Sprintf("[[category.%s.module]]\n", category))
-	config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
-	config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
-
-	tags := promptTags(reader, fmt.Sprintf("Tags for module '%s' (comma-separated, or empty)", name))
-	if len(tags) > 0 {
-		config.WriteString("tags = [")
-		for i, t := range tags {
-			if i > 0 {
-				config.WriteString(", ")
-			}
-			config.WriteString(fmt.Sprintf("\"%s\"", t))
+		input = strings.TrimSpace(strings.ToLower(input))
+		if input == "n" || input == "no" {
+			break
 		}
-		config.WriteString("]\n")
-	}
+		if input != "" && input != "y" && input != "yes" {
+			fmt.Println("  Please enter y or n.")
+			continue
+		}
 
-	config.WriteString("\n")
+		fmt.Print("Module name: ")
+		name, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		name = strings.TrimSpace(name)
+		if name == "" {
+			fmt.Println("  (skipped)")
+			continue
+		}
+
+		defaultSource := name + ".md"
+		fmt.Printf("Source path [%s]: ", defaultSource)
+		source, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		source = strings.TrimSpace(source)
+		if source == "" {
+			source = defaultSource
+		}
+
+		config.WriteString(fmt.Sprintf("[[category.%s.module]]\n", category))
+		config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
+		config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
+
+		tags := promptTags(reader, fmt.Sprintf("Tags for module '%s' (comma-separated, or empty)", name), knownTags)
+		if len(tags) > 0 {
+			config.WriteString("tags = [")
+			for i, t := range tags {
+				if i > 0 {
+					config.WriteString(", ")
+				}
+				config.WriteString(fmt.Sprintf("\"%s\"", t))
+				knownTags[t] = true
+			}
+			config.WriteString("]\n")
+		}
+
+		config.WriteString("\n")
+	}
 }
 
-func promptTags(reader *bufio.Reader, prompt string) []string {
+func promptTags(reader *bufio.Reader, prompt string, knownTags map[string]bool) []string {
+	if len(knownTags) > 0 {
+		fmt.Println("  Existing tags:")
+		printTagTree(knownTags)
+	}
+
 	fmt.Printf("%s: ", prompt)
-	input, _ := reader.ReadString('\n')
+	input, err := reader.ReadString('\n')
+	if err == io.EOF {
+		return nil
+	}
 	input = strings.TrimSpace(input)
 
 	if input == "" {
@@ -211,10 +245,62 @@ func promptTags(reader *bufio.Reader, prompt string) []string {
 	return tags
 }
 
-func promptScopes(reader *bufio.Reader) []string {
+func printTagTree(tags map[string]bool) {
+	roots := make(map[string][]string)
+	for tag := range tags {
+		parts := strings.SplitN(tag, "/", 2)
+		if len(parts) == 1 {
+			roots[tag] = nil
+		} else {
+			roots[parts[0]] = append(roots[parts[0]], parts[1])
+		}
+	}
+
+	sortedRoots := make([]string, 0, len(roots))
+	for r := range roots {
+		sortedRoots = append(sortedRoots, r)
+	}
+	sort.Strings(sortedRoots)
+
+	for i, root := range sortedRoots {
+		children := roots[root]
+		isLast := i == len(sortedRoots)-1
+		prefix := "  "
+		connector := "├── "
+		if isLast {
+			connector = "└── "
+		}
+
+		if len(children) == 0 {
+			fmt.Printf("%s%s%s\n", prefix, connector, root)
+		} else {
+			fmt.Printf("%s%s%s/\n", prefix, connector, root)
+			sort.Strings(children)
+			for j, child := range children {
+				childPrefix := prefix + "│   "
+				if isLast {
+					childPrefix = prefix + "    "
+				}
+				childConnector := "├── "
+				if j == len(children)-1 {
+					childConnector = "└── "
+				}
+				fmt.Printf("%s%s%s\n", childPrefix, childConnector, child)
+			}
+		}
+	}
+}
+
+func promptScopes(reader *bufio.Reader, knownTags map[string]bool) []string {
 	fmt.Println("\n--- Active Scopes ---")
 	fmt.Println("Scopes determine which tagged sections are included.")
 	fmt.Println("Examples: org/acme, lang/go, person/yourname")
+
+	if len(knownTags) > 0 {
+		fmt.Println("Available tags:")
+		printTagTree(knownTags)
+	}
+
 	fmt.Println("Enter scopes separated by commas, or press Enter for none:")
 	fmt.Print("Scopes: ")
 

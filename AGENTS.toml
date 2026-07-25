@@ -2,37 +2,31 @@
 module_dir = ".mogent/modules"
 
 [order]
-categories = ["base", "decision", "coding", "artifacts", "operations"]
+categories = ["identity", "instructions", "constraints", "format"]
 
-# Base rules - always included
-[category.base]
-[[category.base.module]]
-name = "base-rules"
-source = "base-rules.md"
+# Identity - who you are
+[category.identity]
+[[category.identity.module]]
+name = "identity"
+source = "identity.md"
 
-# Decision protocol - always included
-[category.decision]
-[[category.decision.module]]
-name = "decision-protocol"
-source = "decision/decision-protocol.md"
+# Instructions - what you do
+[category.instructions]
+[[category.instructions.module]]
+name = "instructions"
+source = "instructions.md"
 
-# Coding style - always included
-[category.coding]
-[[category.coding.module]]
-name = "style"
-source = "coding/style.md"
+# Constraints - what you can't do
+[category.constraints]
+[[category.constraints.module]]
+name = "constraints"
+source = "constraints.md"
 
-# Artifacts protocol - always included
-[category.artifacts]
-[[category.artifacts.module]]
-name = "protocols"
-source = "artifacts/protocols.md"
-
-# Operations workflow - always included
-[category.operations]
-[[category.operations.module]]
-name = "workflow"
-source = "operations/workflow.md"
+# Format - how you respond
+[category.format]
+[[category.format.module]]
+name = "format"
+source = "format.md"
 
 [activate]
 scopes = []
