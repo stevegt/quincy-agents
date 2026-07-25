@@ -30,7 +30,7 @@ func Parse(path string) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var blocks []Block
 	scanner := bufio.NewScanner(f)

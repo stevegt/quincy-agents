@@ -12,9 +12,9 @@ import (
 )
 
 type SectionStatus struct {
-	Name    string
+	Name     string
 	Included bool
-	Tags    []string
+	Tags     []string
 }
 
 type DiffResult struct {
