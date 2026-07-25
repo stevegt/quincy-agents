@@ -90,7 +90,8 @@ func writeInteractive(config *strings.Builder) {
 	reader := bufio.NewReader(os.Stdin)
 	knownTags := make(map[string]bool)
 
-	fmt.Println("=== Mogent Init ===\n")
+	fmt.Println("Mogent builds your AGENTS.md from smaller Markdown files.")
+	fmt.Println("You'll define the sections, add files, and optionally scope them to teams or projects.\n")
 
 	categories := promptCategoryList(reader)
 
@@ -119,10 +120,10 @@ func writeInteractive(config *strings.Builder) {
 }
 
 func promptCategoryList(reader *bufio.Reader) []string {
-	fmt.Println("Categories control the order sections appear in your AGENTS.md.")
-	fmt.Println("Common categories: identity, instructions, constraints, format")
-	fmt.Println("Enter categories separated by commas, or press Enter for defaults:")
-	fmt.Print("Categories [identity,instructions,constraints,format]: ")
+	fmt.Println("What sections should your AGENTS.md have?")
+	fmt.Println("These appear in order. Common choices: identity, instructions, constraints, format")
+	fmt.Println("Press Enter for defaults, or type your own separated by commas.")
+	fmt.Print("\nSections [identity,instructions,constraints,format]: ")
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
@@ -142,11 +143,11 @@ func promptCategoryList(reader *bufio.Reader) []string {
 }
 
 func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, knownTags map[string]bool) {
-	fmt.Printf("\n--- Category: %s ---\n", category)
+	fmt.Printf("\n--- %s ---\n", strings.Title(category))
 
 	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
 
-	tags := promptTags(reader, "Tags to scope this category (comma-separated, or empty)", knownTags)
+	tags := promptTags(reader, "Only include this section when these tags are active (comma-separated, or empty for always)", knownTags)
 	if len(tags) > 0 {
 		config.WriteString("tags = [")
 		for i, t := range tags {
@@ -162,7 +163,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 	config.WriteString("\n")
 
 	for {
-		fmt.Printf("Add module to '%s'? [Y/n]: ", category)
+		fmt.Printf("Add a file to '%s'? [Y/n]: ", category)
 		input, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -176,7 +177,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 			continue
 		}
 
-		fmt.Print("Module name (e.g., 'identity', 'coding-style'): ")
+		fmt.Print("File name (e.g., 'coding-style'): ")
 		name, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -188,7 +189,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 		}
 
 		defaultSource := name + ".md"
-		fmt.Printf("File path [%s]: ", defaultSource)
+		fmt.Printf("Path [%s]: ", defaultSource)
 		source, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -202,7 +203,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 		config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
 		config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
 
-		tags := promptTags(reader, fmt.Sprintf("Tags for '%s' (comma-separated, or empty)", name), knownTags)
+		tags := promptTags(reader, fmt.Sprintf("Only include '%s' when these tags are active (comma-separated, or empty)", name), knownTags)
 		if len(tags) > 0 {
 			config.WriteString("tags = [")
 			for i, t := range tags {
@@ -294,16 +295,16 @@ func printTagTree(tags map[string]bool) {
 
 func promptScopes(reader *bufio.Reader, knownTags map[string]bool) []string {
 	fmt.Println("\n--- Active Scopes ---")
-	fmt.Println("Scopes filter which tagged sections are included in your AGENTS.md.")
-	fmt.Println("Examples: org/acme, lang/go, person/yourname")
+	fmt.Println("Scopes filter which sections appear in your AGENTS.md.")
+	fmt.Println("For example, 'lang/go' only includes sections tagged with 'lang/go'.")
+	fmt.Println("Leave empty to include everything.")
 
 	if len(knownTags) > 0 {
-		fmt.Println("Available tags:")
+		fmt.Println("\nAvailable tags:")
 		printTagTree(knownTags)
 	}
 
-	fmt.Println("Enter scopes separated by commas, or press Enter for none:")
-	fmt.Print("Scopes: ")
+	fmt.Print("\nActive scopes (comma-separated, or empty): ")
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
