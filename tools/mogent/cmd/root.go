@@ -4,10 +4,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const version = "0.1.0"
+
 var rootCmd = &cobra.Command{
-	Use:   "mogent",
-	Short: "Modular agent prompt manager",
-	Long:  "Assemble AGENTS.md files from modular, scoped templates",
+	Use:     "mogent",
+	Short:   "Modular agent prompt manager",
+	Long:    "Assemble AGENTS.md files from modular, scoped templates",
+	Version: version,
 }
 
 func Execute() error {
@@ -15,6 +18,7 @@ func Execute() error {
 }
 
 func init() {
+	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(editCmd)
 	rootCmd.AddCommand(diffCmd)

@@ -11,11 +11,11 @@ import (
 )
 
 type Config struct {
-	Config        ConfigSection            `toml:"config"`
-	Order         OrderSection             `toml:"order"`
-	Category      map[string]Category      `toml:"category"`
-	Activate      ActivateSection          `toml:"activate"`
-	Output        OutputSection            `toml:"output"`
+	Config   ConfigSection       `toml:"config"`
+	Order    OrderSection        `toml:"order"`
+	Category map[string]Category `toml:"category"`
+	Activate ActivateSection     `toml:"activate"`
+	Output   OutputSection       `toml:"output"`
 }
 
 type ConfigSection struct {
