@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/assemble"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/toml"
@@ -15,10 +16,24 @@ var buildCmd = &cobra.Command{
 	Long:  "Parse AGENTS.toml, resolve active scopes, and assemble the final AGENTS.md",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dryRun, _ := cmd.Flags().GetBool("dry")
+		tagsFilter, _ := cmd.Flags().GetString("tags")
+		configFile, _ := cmd.Flags().GetString("config")
 
-		config, err := toml.Parse("AGENTS.toml")
+		if configFile == "" {
+			configFile = "AGENTS.toml"
+		}
+
+		config, err := toml.Parse(configFile)
 		if err != nil {
-			return fmt.Errorf("failed to parse AGENTS.toml: %w", err)
+			return fmt.Errorf("failed to parse %s: %w", configFile, err)
+		}
+
+		if tagsFilter != "" {
+			scopes := strings.Split(tagsFilter, ",")
+			for i := range scopes {
+				scopes[i] = strings.TrimSpace(scopes[i])
+			}
+			config.Activate.Scopes = scopes
 		}
 
 		engine := assemble.NewEngine(config)
@@ -43,4 +58,6 @@ var buildCmd = &cobra.Command{
 
 func init() {
 	buildCmd.Flags().Bool("dry", false, "Preview output without writing")
+	buildCmd.Flags().String("tags", "", "Filter by tags (comma-separated, overrides AGENTS.toml)")
+	buildCmd.Flags().StringP("config", "c", "AGENTS.toml", "Path to AGENTS.toml config file")
 }
