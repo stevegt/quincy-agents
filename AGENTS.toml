@@ -1,0 +1,27 @@
+[config]
+module_dir = ".mogent/modules"
+
+[category.base]
+[[category.base.module]]
+name = "base-rules"
+source = "base-rules.md"
+
+[category.lang]
+tags = ["org/acme"]
+[[category.lang.module]]
+name = "go-style"
+source = "go-style.md"
+tags = ["lang/go"]
+
+[category.personal]
+tags = ["person/quincy"]
+[[category.personal.module]]
+name = "my-preferences"
+source = "personal.md"
+tags = ["person/quincy"]
+
+[activate]
+scopes = ["person/quincy"]
+
+[output]
+path = "/dev/stdout"
