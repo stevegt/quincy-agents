@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -88,10 +89,11 @@ func writeDefaults(config *strings.Builder) {
 
 func writeInteractive(config *strings.Builder) {
 	reader := bufio.NewReader(os.Stdin)
+	moduleDir := ".mogent/modules"
 	knownTags := make(map[string]bool)
 
 	fmt.Println("Mogent builds your AGENTS.md from smaller Markdown files.")
-	fmt.Println("You'll define the sections, add files, and optionally scope them to teams or projects.\n")
+	fmt.Println("Let's set up your sections and files.\n")
 
 	categories := promptCategoryList(reader)
 
@@ -105,7 +107,7 @@ func writeInteractive(config *strings.Builder) {
 	config.WriteString("]\n\n")
 
 	for _, cat := range categories {
-		writeCategorySection(config, reader, cat, knownTags)
+		writeCategorySection(config, reader, cat, moduleDir, knownTags)
 	}
 
 	scopes := promptScopes(reader, knownTags)
@@ -121,7 +123,7 @@ func writeInteractive(config *strings.Builder) {
 
 func promptCategoryList(reader *bufio.Reader) []string {
 	fmt.Println("What sections should your AGENTS.md have?")
-	fmt.Println("These appear in order. Common choices: identity, instructions, constraints, format")
+	fmt.Println("Common choices: identity, instructions, constraints, format")
 	fmt.Println("Press Enter for defaults, or type your own separated by commas.")
 	fmt.Print("\nSections [identity,instructions,constraints,format]: ")
 
@@ -142,10 +144,21 @@ func promptCategoryList(reader *bufio.Reader) []string {
 	return cats
 }
 
-func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, knownTags map[string]bool) {
+func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, moduleDir string, knownTags map[string]bool) {
 	fmt.Printf("\n--- %s ---\n", strings.Title(category))
 
 	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
+
+	// Scan for existing files in this category
+	existingFiles := findModuleFiles(filepath.Join(moduleDir, category))
+	if len(existingFiles) > 0 {
+		fmt.Println("Existing files:")
+		for _, f := range existingFiles {
+			fmt.Printf("  - %s\n", filepath.Base(f))
+		}
+	} else {
+		fmt.Println("No files found yet.")
+	}
 
 	tags := promptTags(reader, "Only include this section when these tags are active (comma-separated, or empty for always)", knownTags)
 	if len(tags) > 0 {
@@ -203,6 +216,13 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 		config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
 		config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
 
+		// Show tags from the file if it exists
+		filePath := filepath.Join(moduleDir, category, source)
+		fileTags := extractTagsFromFile(filePath)
+		if len(fileTags) > 0 {
+			fmt.Printf("  Tags found in file: %s\n", strings.Join(fileTags, ", "))
+		}
+
 		tags := promptTags(reader, fmt.Sprintf("Only include '%s' when these tags are active (comma-separated, or empty)", name), knownTags)
 		if len(tags) > 0 {
 			config.WriteString("tags = [")
@@ -218,6 +238,47 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 
 		config.WriteString("\n")
 	}
+}
+
+func findModuleFiles(dir string) []string {
+	var files []string
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return files
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	sort.Strings(files)
+	return files
+}
+
+func extractTagsFromFile(path string) []string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+
+	var tags []string
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		// Look for {#tag1 #tag2} patterns
+		if idx := strings.Index(line, "{#"); idx >= 0 {
+			rest := line[idx+2:]
+			if endIdx := strings.Index(rest, "}"); endIdx >= 0 {
+				tagPart := rest[:endIdx]
+				for _, t := range strings.Fields(tagPart) {
+					t = strings.TrimPrefix(t, "#")
+					if t != "" {
+						tags = append(tags, t)
+					}
+				}
+			}
+		}
+	}
+	return tags
 }
 
 func promptTags(reader *bufio.Reader, prompt string, knownTags map[string]bool) []string {
