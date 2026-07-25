@@ -23,4 +23,5 @@ func init() {
 	rootCmd.AddCommand(editCmd)
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(tagsCmd)
 }
