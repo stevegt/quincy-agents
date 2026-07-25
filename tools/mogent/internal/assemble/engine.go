@@ -26,7 +26,13 @@ func NewEngine(config *toml.Config) *Engine {
 func (e *Engine) Assemble() (string, error) {
 	var sections []string
 
-	categoryOrder := []string{"base", "lang", "team", "personal"}
+	categoryOrder := e.config.Order.Categories
+	if len(categoryOrder) == 0 {
+		for catName := range e.config.Category {
+			categoryOrder = append(categoryOrder, catName)
+		}
+	}
+
 	for _, catName := range categoryOrder {
 		cat, ok := e.config.Category[catName]
 		if !ok {

@@ -1,27 +1,41 @@
 [config]
 module_dir = ".mogent/modules"
 
+[order]
+categories = ["base", "decision", "coding", "artifacts", "operations"]
+
+# Base rules - always included
 [category.base]
 [[category.base.module]]
 name = "base-rules"
 source = "base-rules.md"
 
-[category.lang]
-tags = ["org/acme"]
-[[category.lang.module]]
-name = "go-style"
-source = "go-style.md"
-tags = ["lang/go"]
+# Decision protocol - always included
+[category.decision]
+[[category.decision.module]]
+name = "decision-protocol"
+source = "decision/decision-protocol.md"
 
-[category.personal]
-tags = ["person/quincy"]
-[[category.personal.module]]
-name = "my-preferences"
-source = "personal.md"
-tags = ["person/quincy"]
+# Coding style - always included
+[category.coding]
+[[category.coding.module]]
+name = "style"
+source = "coding/style.md"
+
+# Artifacts protocol - always included
+[category.artifacts]
+[[category.artifacts.module]]
+name = "protocols"
+source = "artifacts/protocols.md"
+
+# Operations workflow - always included
+[category.operations]
+[[category.operations.module]]
+name = "workflow"
+source = "operations/workflow.md"
 
 [activate]
-scopes = ["person/quincy"]
+scopes = []
 
 [output]
-path = "/dev/stdout"
+path = "AGENTS.md"
