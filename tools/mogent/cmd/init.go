@@ -119,7 +119,8 @@ func writeInteractive(config *strings.Builder) {
 }
 
 func promptCategoryList(reader *bufio.Reader) []string {
-	fmt.Println("Categories define groups of modules (e.g., identity, instructions, constraints, format).")
+	fmt.Println("Categories control the order sections appear in your AGENTS.md.")
+	fmt.Println("Common categories: identity, instructions, constraints, format")
 	fmt.Println("Enter categories separated by commas, or press Enter for defaults:")
 	fmt.Print("Categories [identity,instructions,constraints,format]: ")
 
@@ -145,7 +146,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 
 	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
 
-	tags := promptTags(reader, "Tags for category (comma-separated, or empty)", knownTags)
+	tags := promptTags(reader, "Tags to scope this category (comma-separated, or empty)", knownTags)
 	if len(tags) > 0 {
 		config.WriteString("tags = [")
 		for i, t := range tags {
@@ -175,7 +176,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 			continue
 		}
 
-		fmt.Print("Module name: ")
+		fmt.Print("Module name (e.g., 'identity', 'coding-style'): ")
 		name, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -187,7 +188,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 		}
 
 		defaultSource := name + ".md"
-		fmt.Printf("Source path [%s]: ", defaultSource)
+		fmt.Printf("File path [%s]: ", defaultSource)
 		source, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -201,7 +202,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 		config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
 		config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
 
-		tags := promptTags(reader, fmt.Sprintf("Tags for module '%s' (comma-separated, or empty)", name), knownTags)
+		tags := promptTags(reader, fmt.Sprintf("Tags for '%s' (comma-separated, or empty)", name), knownTags)
 		if len(tags) > 0 {
 			config.WriteString("tags = [")
 			for i, t := range tags {
@@ -293,7 +294,7 @@ func printTagTree(tags map[string]bool) {
 
 func promptScopes(reader *bufio.Reader, knownTags map[string]bool) []string {
 	fmt.Println("\n--- Active Scopes ---")
-	fmt.Println("Scopes determine which tagged sections are included.")
+	fmt.Println("Scopes filter which tagged sections are included in your AGENTS.md.")
 	fmt.Println("Examples: org/acme, lang/go, person/yourname")
 
 	if len(knownTags) > 0 {
