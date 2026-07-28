@@ -35,10 +35,12 @@ type Module struct {
 	Name   string   `toml:"name"`
 	Source string   `toml:"source"`
 	Tags   []string `toml:"tags"`
+	Blocks []string `toml:"blocks"`
 }
 
 type ActivateSection struct {
-	Scopes []string `toml:"scopes"`
+	Scopes     []string `toml:"scopes"`
+	References []string `toml:"references"`
 }
 
 type OutputSection struct {

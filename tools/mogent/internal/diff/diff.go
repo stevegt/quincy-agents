@@ -1,5 +1,6 @@
-// Intent: Show which sections of a module are included/excluded by active scopes.
-// Source: DI-jusuk
+// Intent: Show which selectable heading blocks are included/excluded by active
+// scopes so block-aware diffs can report stable IDs and rendered text impact.
+// Source: DI-lorad
 
 package diff
 
@@ -12,9 +13,11 @@ import (
 )
 
 type SectionStatus struct {
-	Name     string
-	Included bool
-	Tags     []string
+	Name      string
+	BlockID   string
+	Included  bool
+	Tags      []string
+	LineCount int
 }
 
 type DiffResult struct {
@@ -39,8 +42,10 @@ func AnalyzeModule(mod *module.Module, scopes []string) *DiffResult {
 		}
 
 		status := SectionStatus{
-			Name: block.Content,
-			Tags: block.Tags,
+			Name:      block.Heading,
+			BlockID:   block.Metadata.ID,
+			Tags:      block.Tags,
+			LineCount: renderedLineCount(block.Content),
 		}
 
 		if len(block.Tags) == 0 {
@@ -73,16 +78,28 @@ func FormatAnalysis(result *DiffResult, moduleName string) string {
 	sb.WriteString(fmt.Sprintf("Included: %d, Excluded: %d\n\n", result.Stats.Included, result.Stats.Excluded))
 
 	for _, section := range result.Sections {
+		blockSuffix := ""
+		if section.BlockID != "" {
+			blockSuffix = fmt.Sprintf(" #%s", section.BlockID)
+		}
 		if section.Included {
-			sb.WriteString(fmt.Sprintf("  [+] %s", section.Name))
+			sb.WriteString(fmt.Sprintf("  [+] %s%s", section.Name, blockSuffix))
 			if len(section.Tags) > 0 {
 				sb.WriteString(fmt.Sprintf(" {%s}", strings.Join(section.Tags, " ")))
 			}
-			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf(" (%d rendered lines)\n", section.LineCount))
 		} else {
-			sb.WriteString(fmt.Sprintf("  [-] %s {%s}\n", section.Name, strings.Join(section.Tags, " ")))
+			sb.WriteString(fmt.Sprintf("  [-] %s%s {%s} (%d rendered lines)\n", section.Name, blockSuffix, strings.Join(section.Tags, " "), section.LineCount))
 		}
 	}
 
 	return sb.String()
+}
+
+func renderedLineCount(content string) int {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return 0
+	}
+	return len(strings.Split(trimmed, "\n"))
 }

@@ -92,7 +92,8 @@ func writeInteractive(config *strings.Builder) {
 	knownTags := make(map[string]bool)
 
 	fmt.Println("Mogent builds your AGENTS.md from smaller Markdown files.")
-	fmt.Println("Let's set up your sections and files.\n")
+	fmt.Println("Let's set up your sections and files.")
+	fmt.Println()
 
 	categories := promptCategoryList(reader)
 

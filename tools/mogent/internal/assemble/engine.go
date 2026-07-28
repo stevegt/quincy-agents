@@ -1,12 +1,14 @@
-// Intent: Assembly engine that combines modules based on active scopes and category order.
-// Source: DI-jusuk
+// Intent: Assembly engine that combines modules based on active scopes,
+// category order, and stable heading-subtree selections. Source: DI-lorad
 
 package assemble
 
 import (
-	"os"
+	"fmt"
+	"path/filepath"
 	"strings"
 
+	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/module"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/scope"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/toml"
 )
@@ -24,93 +26,110 @@ func NewEngine(config *toml.Config) *Engine {
 }
 
 func (e *Engine) Assemble() (string, error) {
-	var sections []string
+	return e.assembleBlocks()
+}
 
-	categoryOrder := e.config.Order.Categories
-	if len(categoryOrder) == 0 {
-		for catName := range e.config.Category {
-			categoryOrder = append(categoryOrder, catName)
-		}
+func (e *Engine) assembleBlocks() (string, error) {
+	sources := e.moduleSources()
+	if len(sources) == 0 {
+		return "", fmt.Errorf("no active module sources configured")
+	}
+	index, err := module.BuildIndex(sources)
+	if err != nil {
+		return "", fmt.Errorf("build module index: %w", err)
 	}
 
-	for _, catName := range categoryOrder {
-		cat, ok := e.config.Category[catName]
-		if !ok {
-			continue
+	requested, err := e.requestedReferences()
+	if err != nil {
+		return "", err
+	}
+	if len(requested) == 0 {
+		return "", fmt.Errorf("no block selections configured; add activate.references or module blocks")
+	}
+
+	var sections []string
+	for _, reference := range requested {
+		block, err := index.SelectBlock(reference)
+		if err != nil {
+			return "", err
 		}
-
-		if !e.resolver.Matches(cat.Tags) {
-			continue
-		}
-
-		for _, mod := range cat.Modules {
-			if !e.resolver.Matches(mod.Tags) {
-				continue
-			}
-
-			path := e.config.ResolveModulePath(mod.Source)
-			content, err := os.ReadFile(path)
-			if err != nil {
-				continue
-			}
-
-			filtered := e.filterContent(string(content), mod)
-			if filtered != "" {
-				sections = append(sections, filtered)
-			}
+		if block.Block.Content != "" {
+			sections = append(sections, block.Block.Content)
 		}
 	}
 
 	return strings.Join(sections, "\n\n"), nil
 }
 
-func (e *Engine) filterContent(content string, mod toml.Module) string {
-	lines := strings.Split(content, "\n")
-	var result []string
-	inExcludedBlock := false
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "#") {
-			tags := extractTagsFromLine(line)
-			if len(tags) > 0 && !e.resolver.Matches(tags) {
-				inExcludedBlock = true
+func (e *Engine) moduleSources() []module.SourceFile {
+	var sources []module.SourceFile
+	seen := make(map[string]bool)
+	for _, catName := range e.categoryOrder() {
+		cat, ok := e.config.Category[catName]
+		if !ok || !e.resolver.Matches(cat.Tags) {
+			continue
+		}
+		for _, mod := range cat.Modules {
+			if !e.resolver.Matches(mod.Tags) {
 				continue
 			}
-			inExcludedBlock = false
-			line = stripTags(line)
-		}
-
-		if !inExcludedBlock {
-			result = append(result, line)
+			referencePath := module.NormalizeReferencePath(mod.Source)
+			filePath := e.config.ResolveModulePath(mod.Source)
+			key := filepath.Clean(filePath)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			sources = append(sources, module.SourceFile{
+				ReferencePath: referencePath,
+				FilePath:      filePath,
+			})
 		}
 	}
-
-	return strings.Join(result, "\n")
+	return sources
 }
 
-func stripTags(line string) string {
-	start := strings.Index(line, "{")
-	end := strings.Index(line, "}")
-	if start == -1 || end == -1 || end <= start {
-		return line
-	}
-	return strings.TrimSpace(line[:start] + line[end+1:])
-}
-
-func extractTagsFromLine(line string) []string {
-	start := strings.Index(line, "{")
-	end := strings.Index(line, "}")
-	if start == -1 || end == -1 || end <= start {
-		return nil
+func (e *Engine) requestedReferences() ([]module.Reference, error) {
+	if len(e.config.Activate.References) > 0 {
+		references := make([]module.Reference, 0, len(e.config.Activate.References))
+		for _, rawReference := range e.config.Activate.References {
+			reference, err := module.ParseReference(rawReference)
+			if err != nil {
+				return nil, err
+			}
+			references = append(references, reference)
+		}
+		return references, nil
 	}
 
-	tagStr := line[start+1 : end]
-	var tags []string
-	for _, t := range strings.Fields(tagStr) {
-		t = strings.TrimPrefix(t, "#")
-		if t != "" {
-			tags = append(tags, t)
+	var references []module.Reference
+	for _, catName := range e.categoryOrder() {
+		cat, ok := e.config.Category[catName]
+		if !ok || !e.resolver.Matches(cat.Tags) {
+			continue
+		}
+		for _, mod := range cat.Modules {
+			if !e.resolver.Matches(mod.Tags) {
+				continue
+			}
+			referencePath := module.NormalizeReferencePath(mod.Source)
+			for _, blockID := range mod.Blocks {
+				references = append(references, module.Reference{
+					Path: referencePath,
+					ID:   strings.TrimSpace(blockID),
+				})
+			}
 		}
 	}
-	return tags
+	return references, nil
+}
+
+func (e *Engine) categoryOrder() []string {
+	categoryOrder := e.config.Order.Categories
+	if len(categoryOrder) == 0 {
+		for catName := range e.config.Category {
+			categoryOrder = append(categoryOrder, catName)
+		}
+	}
+	return categoryOrder
 }

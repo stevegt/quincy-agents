@@ -1,7 +1,17 @@
 # Instructions
 
+<!--
+agent_module:
+  id: instructions
+  tldr: Defines the default workflow and repository process rules.
+-->
 ## Workflow
 
+<!--
+agent_module:
+  id: workflow
+  tldr: Gives the basic work loop for coding tasks.
+-->
 1. Understand the request before coding
 2. Ask clarifying questions if the request is ambiguous
 3. Make minimal, focused changes
@@ -10,6 +20,11 @@
 
 ## Code Changes
 
+<!--
+agent_module:
+  id: code-changes
+  tldr: Sets expectations for focused edits and comment preservation.
+-->
 - Make minimal, focused changes directly tied to the request
 - Do not rewrite files from scratch unless explicitly asked
 - Preserve existing code comments unless replacing with better ones
@@ -17,12 +32,22 @@
 
 ## Testing
 
+<!--
+agent_module:
+  id: testing
+  tldr: Defines deterministic Go testing and runtime artifact placement.
+-->
 - Use Go's standard `testing` package with deterministic tests
 - Avoid network calls in tests unless explicitly required and documented
 - Put test temp files and Go caches under `/tmp`, not inside this repo
 
 ## Commits
 
+<!--
+agent_module:
+  id: commits
+  tldr: Defines commit behavior and forbidden commit contents.
+-->
 - Treat a line containing only `commit` as: add and commit all changes with an AGENTS-compliant message
 - Use short, imperative, capitalized commit subjects
 - Summarize changes per file in commit bodies
@@ -33,6 +58,11 @@
 
 ## Decision Protocol
 
+<!--
+agent_module:
+  id: decision-protocol
+  tldr: Requires decisions to be identified, asked, locked, and recorded.
+-->
 When making non-trivial changes:
 1. Identify what decisions need to be made
 2. Ask decision questions up front in a single round
@@ -42,6 +72,11 @@ When making non-trivial changes:
 
 ## Thought Experiments
 
+<!--
+agent_module:
+  id: thought-experiments
+  tldr: Defines pre-decision scenario analysis for non-trivial decisions.
+-->
 Before locking any non-trivial decision:
 1. Run a thought experiment if multiple plausible designs remain
 2. Evaluate the decision across multiple concrete scenarios
@@ -51,6 +86,11 @@ Before locking any non-trivial decision:
 
 ## DR/DI Protocol
 
+<!--
+agent_module:
+  id: dr-di-protocol
+  tldr: Defines decision records as the source of truth.
+-->
 - DR and DI logs are the primary source of truth for decisions and open questions
 - Documents and code are outputs of that process and must link back to DR/DI records
 - Person identity in DR/DI records must use full email with label format: `user@example.com (FirstName)`
@@ -60,6 +100,11 @@ Before locking any non-trivial decision:
 
 ## Comment Preservation
 
+<!--
+agent_module:
+  id: comment-preservation
+  tldr: Preserves explanatory code comments and requires DI provenance.
+-->
 - Never remove existing code comments unless they are replaced in the same patch by equal-or-better explanatory comments near the same logic
 - When rewriting or refactoring code, port old explanatory intent first, then improve wording
 - If a touched non-trivial code block has no comments, add explanatory comments
@@ -70,6 +115,11 @@ Before locking any non-trivial decision:
 
 ## Public Artifacts
 
+<!--
+agent_module:
+  id: public-artifacts
+  tldr: Keeps public artifacts clean while preserving provenance in references.
+-->
 - Do not put DI, DR, TODO, or TE references in slides; keep public decks visually clean
 - In white papers, use GitHub Markdown footnote tags for DI, DR, TODO, or TE references
 - White papers with DI, DR, TODO, or TE footnotes must include a `## References` section at the bottom of the document
@@ -77,6 +127,11 @@ Before locking any non-trivial decision:
 
 ## TODO Tracking
 
+<!--
+agent_module:
+  id: todo-tracking
+  tldr: Defines TODO index and task-file conventions.
+-->
 - Maintain a `./TODO/` directory for tracking tasks and plans
 - Maintain a `./TODO/TODO.md` file that lists small tasks and the other TODO files
 - New TODO files use `TODO-<handle>-<slug>.md`, where `<handle>` is minted by `tools/mint-handle`

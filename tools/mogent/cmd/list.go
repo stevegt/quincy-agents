@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/module"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/scope"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/toml"
 	"github.com/spf13/cobra"
@@ -73,6 +74,22 @@ var listCmd = &cobra.Command{
 					}
 				} else {
 					fmt.Printf("[%s] %s/%s (%s)\n", status, catName, mod.Name, mod.Source)
+				}
+
+				filePath := config.ResolveModulePath(mod.Source)
+				parsedModule, err := module.Parse(filePath)
+				if err != nil {
+					return fmt.Errorf("failed to parse module %s: %w", mod.Source, err)
+				}
+				for _, block := range parsedModule.Blocks {
+					if block.Metadata.ID == "" {
+						continue
+					}
+					description := block.Metadata.TLDR
+					if description != "" {
+						description = " - " + description
+					}
+					fmt.Printf("    [[%s#%s]] %s%s\n", module.NormalizeReferencePath(mod.Source), block.Metadata.ID, block.Heading, description)
 				}
 			}
 		}

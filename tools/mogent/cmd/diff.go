@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/diff"
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/module"
@@ -21,7 +22,11 @@ var diffCmd = &cobra.Command{
 		}
 
 		moduleName := args[0]
-		path := config.ResolveModulePath(moduleName + ".md")
+		moduleSource := moduleName
+		if !strings.HasSuffix(moduleSource, ".md") {
+			moduleSource += ".md"
+		}
+		path := config.ResolveModulePath(moduleSource)
 
 		mod, err := module.Parse(path)
 		if err != nil {

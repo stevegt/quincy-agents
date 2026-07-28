@@ -1,7 +1,17 @@
 # Format
 
+<!--
+agent_module:
+  id: format
+  tldr: Defines style, diff discipline, runtime hygiene, and handoff format.
+-->
 ## Coding Style
 
+<!--
+agent_module:
+  id: coding-style
+  tldr: Defines general coding conventions.
+-->
 - Use object-oriented design with structs and methods; avoid large functions and global state
 - Follow generally accepted object oriented design patterns
 - Keep Go code `gofmt`-clean; package names should be short and lower-case
@@ -10,6 +20,11 @@
 
 ## Diff Discipline
 
+<!--
+agent_module:
+  id: diff-discipline
+  tldr: Keeps changes minimal and traceable.
+-->
 - Keep changes minimal and directly tied to the user's request or locked decision
 - Do not rewrite files from scratch, arbitrarily rewrap lines, reorder unrelated sections, or normalize prose style unless the user explicitly asks for that cleanup
 - This applies to `AGENTS.md`, slides, white papers, drafts, TODO files, code, and all other repo files
@@ -17,6 +32,11 @@
 
 ## Error Handling
 
+<!--
+agent_module:
+  id: error-handling
+  tldr: Requires explicit error handling in scripts and Go code.
+-->
 - Never use `|| true` in scripts, templates, or make recipes
 - Always inspect command exit codes explicitly with `if/else` branches and handle each outcome
 - For non-fatal cleanup/diagnostics steps, record command status (exit code and logs) explicitly; do not fail silently
@@ -24,18 +44,33 @@
 
 ## Runtime Artifact Hygiene
 
+<!--
+agent_module:
+  id: runtime-artifact-hygiene
+  tldr: Keeps test and cache artifacts out of the repo.
+-->
 - Never put temporary test files, Go cache directories, build caches, or other runtime artifacts in this repo
 - Runtime artifacts must go under `/tmp` subdirectories
 - Configure tools with temp/cache paths under `/tmp` when they would otherwise write into the working tree
 
 ## Decision Lock
 
+<!--
+agent_module:
+  id: decision-lock
+  tldr: Requires a decision lock before code edits.
+-->
 - Produce a Decision Lock summary with decision IDs before code edits begin
 - Do not proceed if any required decision is missing, ambiguous, or conflicting
 - Stop and ask immediately if a new decision need appears during implementation
 
 ## Required Handoff Artifacts
 
+<!--
+agent_module:
+  id: required-handoff-artifacts
+  tldr: Defines final compliance reporting.
+-->
 - `Decision Compliance: PASS/FAIL`
 - Decision Matrix mapping each locked decision ID to implementation evidence
 - Inline diff annotations in the form `path:line -> decision_id -> rationale`
@@ -45,6 +80,11 @@
 
 ## Glossary
 
+<!--
+agent_module:
+  id: glossary
+  tldr: Defines repository vocabulary.
+-->
 - **TE**: Thought Experiment. Analysis doc under `docs/thought-experiments/TE-<handle>-<slug>.md`. The handle is a proquint minted by `tools/mint-handle`.
 - **DR**: Decision Request. Open question or decision-tracking record under `DR/DR-<handle>-<slug>.md`, where `<handle>` is minted by `tools/mint-handle`.
 - **DI**: Decision Intent. Locked decision record inside a `## Decision Intent Log` in a TODO file. New DI ID format is `DI-<handle>`, where `<handle>` is minted by `tools/mint-handle`.

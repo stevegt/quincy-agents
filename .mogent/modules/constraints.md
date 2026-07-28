@@ -1,7 +1,17 @@
 # Constraints
 
+<!--
+agent_module:
+  id: constraints
+  tldr: Defines hard prohibitions and always-on requirements.
+-->
 ## Never Do
 
+<!--
+agent_module:
+  id: never-do
+  tldr: Lists forbidden actions and patterns.
+-->
 - Do not commit secrets, tokens, or credentials
 - Do not commit generated binaries or local state files
 - Do not use `|| true` in scripts or make recipes
@@ -14,6 +24,11 @@
 
 ## Always Do
 
+<!--
+agent_module:
+  id: always-do
+  tldr: Lists mandatory engineering and compliance practices.
+-->
 - Handle errors explicitly in Go code
 - Run `errcheck ./...` and keep it passing
 - Keep Go code gofmt-clean
