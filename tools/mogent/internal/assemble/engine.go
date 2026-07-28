@@ -16,6 +16,7 @@ import (
 type Engine struct {
 	config   *toml.Config
 	resolver *scope.Resolver
+	warnings []string
 }
 
 func NewEngine(config *toml.Config) *Engine {
@@ -27,6 +28,10 @@ func NewEngine(config *toml.Config) *Engine {
 
 func (e *Engine) Assemble() (string, error) {
 	return e.assembleBlocks()
+}
+
+func (e *Engine) Warnings() []string {
+	return append([]string(nil), e.warnings...)
 }
 
 func (e *Engine) assembleBlocks() (string, error) {
@@ -53,12 +58,39 @@ func (e *Engine) assembleBlocks() (string, error) {
 		if err != nil {
 			return "", err
 		}
+		// Intent: Preserve build momentum for heading-only blocks while warning
+		// that the selected block has no body content. Source: DI-nasot
 		if block.Block.Content != "" {
 			sections = append(sections, block.Block.Content)
 		}
+		if blockBodyEmpty(block.Block.Content) {
+			e.warnings = append(e.warnings, fmt.Sprintf("selected block %s has no body content", reference.String()))
+		}
+	}
+
+	if strings.TrimSpace(strings.Join(sections, "\n\n")) == "" {
+		return "", fmt.Errorf("rendered output is empty")
 	}
 
 	return strings.Join(sections, "\n\n"), nil
+}
+
+func ValidateOutput(output string) error {
+	if strings.TrimSpace(output) == "" {
+		return fmt.Errorf("rendered output is empty")
+	}
+	return nil
+}
+
+func blockBodyEmpty(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func (e *Engine) moduleSources() []module.SourceFile {

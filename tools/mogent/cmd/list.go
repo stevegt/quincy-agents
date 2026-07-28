@@ -6,6 +6,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/module"
@@ -22,6 +24,8 @@ var listCmd = &cobra.Command{
 		activeOnly, _ := cmd.Flags().GetBool("active")
 		tagsFilter, _ := cmd.Flags().GetString("tags")
 		showTags, _ := cmd.Flags().GetBool("show-tags")
+		noDescriptions, _ := cmd.Flags().GetBool("no-descriptions")
+		widthOverride, _ := cmd.Flags().GetInt("width")
 		configFile, _ := cmd.Flags().GetString("config")
 
 		if configFile == "" {
@@ -48,6 +52,10 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		// Intent: Keep tree output readable in narrow terminals while retaining
+		// explicit, inherited, and inactive selection states. Source: DI-nasot
+		width := terminalWidth(widthOverride)
+		showDescriptions := !noDescriptions && width >= 72
 
 		fmt.Println(".")
 		visibleCategories := make([]string, 0, len(config.Order.Categories))
@@ -115,21 +123,24 @@ var listCmd = &cobra.Command{
 					if block.Metadata.ID == "" {
 						continue
 					}
-					included := moduleActive && blockIncluded(parsedModule.Blocks, i, selectedIDs)
-					if activeOnly && !included {
+					state := blockSelectionState(parsedModule.Blocks, i, selectedIDs, moduleActive)
+					if activeOnly && state == selectionInactive {
 						continue
 					}
 					description := block.Metadata.TLDR
-					if description != "" {
+					if showDescriptions && description != "" {
 						description = "  " + description
+					} else {
+						description = ""
 					}
-					blockLines = append(blockLines, fmt.Sprintf("%s %-28s %s%s", marker(included), block.Metadata.ID, block.Heading, description))
+					blockLines = append(blockLines, fmt.Sprintf("%s %-28s %s%s", selectionMarker(state), block.Metadata.ID, block.Heading, description))
 				}
 
 				modulePrefix := childPrefix(categoryPrefix, moduleLast)
 				for blockIndex, line := range blockLines {
 					blockLast := blockIndex == len(blockLines)-1
-					fmt.Printf("%s%s%s\n", modulePrefix, branch(blockLast), line)
+					prefix := modulePrefix + branch(blockLast)
+					fmt.Println(prefix + truncateToWidth(line, width-displayWidth(prefix)))
 				}
 			}
 		}
@@ -142,8 +153,18 @@ func init() {
 	listCmd.Flags().Bool("active", false, "Show only active modules")
 	listCmd.Flags().String("tags", "", "Filter by tags (comma-separated)")
 	listCmd.Flags().Bool("show-tags", false, "Show tags for each module")
+	listCmd.Flags().Bool("no-descriptions", false, "Hide block descriptions")
+	listCmd.Flags().Int("width", 0, "Render width override for testing")
 	listCmd.Flags().StringP("config", "c", "AGENTS.toml", "Path to AGENTS.toml config file")
 }
+
+type selectionState int
+
+const (
+	selectionInactive selectionState = iota
+	selectionInherited
+	selectionExplicit
+)
 
 func selectedReferencesByPath(config *toml.Config) (map[string]map[string]bool, error) {
 	selected := make(map[string]map[string]bool)
@@ -168,10 +189,13 @@ func selectedModuleBlocks(mod toml.Module) map[string]bool {
 	return selected
 }
 
-func blockIncluded(blocks []module.Block, index int, selectedIDs map[string]bool) bool {
+func blockSelectionState(blocks []module.Block, index int, selectedIDs map[string]bool, moduleActive bool) selectionState {
+	if !moduleActive {
+		return selectionInactive
+	}
 	block := blocks[index]
 	if selectedIDs[block.Metadata.ID] {
-		return true
+		return selectionExplicit
 	}
 	for i := index - 1; i >= 0; i-- {
 		ancestor := blocks[i]
@@ -179,11 +203,11 @@ func blockIncluded(blocks []module.Block, index int, selectedIDs map[string]bool
 			continue
 		}
 		if selectedIDs[ancestor.Metadata.ID] {
-			return true
+			return selectionInherited
 		}
 		block = ancestor
 	}
-	return false
+	return selectionInactive
 }
 
 func marker(active bool) string {
@@ -191,6 +215,17 @@ func marker(active bool) string {
 		return "+"
 	}
 	return "-"
+}
+
+func selectionMarker(state selectionState) string {
+	switch state {
+	case selectionExplicit:
+		return "+"
+	case selectionInherited:
+		return "|"
+	default:
+		return "-"
+	}
 }
 
 func branch(last bool) string {
@@ -213,4 +248,39 @@ func printTags(tags []string) {
 		return
 	}
 	fmt.Println()
+}
+
+func terminalWidth(override int) int {
+	if override > 0 {
+		return override
+	}
+	columns := strings.TrimSpace(os.Getenv("COLUMNS"))
+	if columns != "" {
+		width, err := strconv.Atoi(columns)
+		if err == nil && width > 0 {
+			return width
+		}
+	}
+	return 100
+}
+
+func truncateToWidth(value string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if displayWidth(value) <= width {
+		return value
+	}
+	if width <= 3 {
+		return strings.Repeat(".", width)
+	}
+	runes := []rune(value)
+	for displayWidth(string(runes)) > width-3 {
+		runes = runes[:len(runes)-1]
+	}
+	return string(runes) + "..."
+}
+
+func displayWidth(value string) int {
+	return len([]rune(value))
 }

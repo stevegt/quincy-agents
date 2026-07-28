@@ -71,3 +71,57 @@ Compare alternatives.
 		t.Fatal("output retained builder metadata")
 	}
 }
+
+func TestValidateOutputRejectsEmptyOutput(t *testing.T) {
+	if err := ValidateOutput(" \n\t "); err == nil {
+		t.Fatal("ValidateOutput returned nil error for empty output")
+	}
+}
+
+func TestAssembleWarnsOnEmptySelectedBlock(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "modules")
+	if err := os.Mkdir(moduleDir, 0755); err != nil {
+		t.Fatalf("Mkdir returned error: %v", err)
+	}
+	modulePath := filepath.Join(moduleDir, "empty.md")
+	if err := os.WriteFile(modulePath, []byte(`# Empty
+
+<!--
+agent_module:
+  id: empty
+-->
+
+# Filled
+
+<!--
+agent_module:
+  id: filled
+-->
+Filled.
+`), 0644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	config := &toml.Config{
+		Config: toml.ConfigSection{ModuleDir: moduleDir},
+		Order:  toml.OrderSection{Categories: []string{"test"}},
+		Category: map[string]toml.Category{
+			"test": {
+				Modules: []toml.Module{{
+					Name:   "empty",
+					Source: "empty.md",
+					Blocks: []string{"empty", "filled"},
+				}},
+			},
+		},
+	}
+
+	engine := NewEngine(config)
+	if _, err := engine.Assemble(); err != nil {
+		t.Fatalf("Assemble returned error: %v", err)
+	}
+	if len(engine.Warnings()) != 1 {
+		t.Fatalf("len(Warnings) = %d, want 1", len(engine.Warnings()))
+	}
+}

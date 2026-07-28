@@ -41,6 +41,14 @@ var buildCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("assembly failed: %w", err)
 		}
+		// Intent: Refuse empty generated prompts and surface weak block choices
+		// before writing AGENTS.md. Source: DI-nasot
+		if err := assemble.ValidateOutput(output); err != nil {
+			return fmt.Errorf("validation failed: %w", err)
+		}
+		for _, warning := range engine.Warnings() {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+		}
 
 		if dryRun {
 			fmt.Println(output)

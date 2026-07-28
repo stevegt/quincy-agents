@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -127,12 +128,45 @@ func promptCategoryList(reader *bufio.Reader) []string {
 func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, moduleDir string) {
 	fmt.Printf("\n--- %s ---\n", displayName(category))
 
-	// Intent: Configure one block-native module per category, replacing the old
-	// file/tag scan with immediate selectable block IDs. Source: DI-soviv
-	source := category + ".md"
-	path := filepath.Join(moduleDir, source)
+	// Intent: Discover existing module files during init so users can view,
+	// edit, and select blocks from what is already on disk. Source: DI-nasot
 	writeStarterModule(moduleDir, category)
+	sources := discoverModuleSources(moduleDir)
+	if len(sources) == 0 {
+		sources = []string{category + ".md"}
+	}
 
+	defaultSource := category + ".md"
+	fmt.Println("Available modules:")
+	for _, source := range sources {
+		marker := " "
+		if source == defaultSource {
+			marker = "*"
+		}
+		fmt.Printf("  %s %s\n", marker, source)
+	}
+
+	fmt.Printf("Module [%s]: ", defaultSource)
+	input, _ := reader.ReadString('\n')
+	source := strings.TrimSpace(input)
+	if source == "" {
+		source = defaultSource
+	}
+
+	path := filepath.Join(moduleDir, source)
+	for {
+		action := promptModuleAction(reader, source)
+		switch action {
+		case "v":
+			viewModule(path)
+		case "e":
+			editModule(path)
+		default:
+			goto chooseBlocks
+		}
+	}
+
+chooseBlocks:
 	parsedModule, err := module.Parse(path)
 	if err != nil {
 		fmt.Printf("Could not inspect %s: %v\n", source, err)
@@ -152,7 +186,7 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 
 	defaultBlocks := []string{category}
 	fmt.Printf("Blocks [%s]: ", strings.Join(defaultBlocks, ","))
-	input, _ := reader.ReadString('\n')
+	input, _ = reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 	if input != "" {
 		defaultBlocks = splitCSV(input)
@@ -162,6 +196,45 @@ func writeCategorySection(config *strings.Builder, reader *bufio.Reader, categor
 	}
 
 	writeModuleConfig(config, category, source, defaultBlocks)
+}
+
+func discoverModuleSources(moduleDir string) []string {
+	files := findModuleFiles(moduleDir)
+	sources := make([]string, 0, len(files))
+	for _, file := range files {
+		sources = append(sources, filepath.Base(file))
+	}
+	return sources
+}
+
+func promptModuleAction(reader *bufio.Reader, source string) string {
+	fmt.Printf("Action for %s: [enter choose blocks, v view, e edit]: ", source)
+	input, _ := reader.ReadString('\n')
+	return strings.TrimSpace(strings.ToLower(input))
+}
+
+func viewModule(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Printf("Could not read %s: %v\n", path, err)
+		return
+	}
+	fmt.Printf("\n%s\n%s\n", path, strings.TrimSpace(string(data)))
+}
+
+func editModule(path string) {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		fmt.Println("EDITOR is not set.")
+		return
+	}
+	cmd := exec.Command(editor, path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Editor failed: %v\n", err)
+	}
 }
 
 func writeModuleConfig(config *strings.Builder, category string, source string, blocks []string) {
