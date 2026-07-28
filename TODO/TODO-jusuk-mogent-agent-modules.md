@@ -40,3 +40,4 @@ Affects: tools/mogent/cmd/edit.go
 - docs/examples/DESIGN-SUMMARY.md - Final design decisions
 - docs/examples/AGENTS-style-e-hierarchical.md - TOML style reference
 - docs/examples/AGENTS-style-f-slashes.md - Slash notation reference
+- docs/thought-experiments/TE-tavim-mogent-module-reference-model.md - Follow-up TE for block references, presets, metadata, render order, and diff model. Manual handle allocation approved by user because `tools/mint-handle` was unavailable at the approved paths.
