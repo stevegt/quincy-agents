@@ -4,28 +4,24 @@ module_dir = ".mogent/modules"
 [order]
 categories = ["identity", "instructions", "constraints", "format"]
 
-# Identity - who you are
 [category.identity]
 [[category.identity.module]]
 name = "identity"
 source = "identity.md"
 blocks = ["identity"]
 
-# Instructions - what you do
 [category.instructions]
 [[category.instructions.module]]
 name = "instructions"
 source = "instructions.md"
 blocks = ["instructions"]
 
-# Constraints - what you can't do
 [category.constraints]
 [[category.constraints.module]]
 name = "constraints"
 source = "constraints.md"
 blocks = ["constraints"]
 
-# Format - how you respond
 [category.format]
 [[category.format.module]]
 name = "format"

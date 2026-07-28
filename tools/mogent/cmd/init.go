@@ -1,13 +1,17 @@
+// Intent: Initialize block-native mogent configs and starter modules so new
+// repos can immediately build AGENTS.md from selectable heading subtrees.
+// Source: DI-soviv
+
 package cmd
 
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Qu1ncyRy4n/Agents/tools/mogent/internal/module"
 	"github.com/spf13/cobra"
 )
 
@@ -63,25 +67,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 func writeDefaults(config *strings.Builder) {
 	config.WriteString("[order]\ncategories = [\"identity\", \"instructions\", \"constraints\", \"format\"]\n\n")
 
-	config.WriteString("[category.identity]\n")
-	config.WriteString("[[category.identity.module]]\n")
-	config.WriteString("name = \"identity\"\n")
-	config.WriteString("source = \"identity.md\"\n\n")
-
-	config.WriteString("[category.instructions]\n")
-	config.WriteString("[[category.instructions.module]]\n")
-	config.WriteString("name = \"instructions\"\n")
-	config.WriteString("source = \"instructions.md\"\n\n")
-
-	config.WriteString("[category.constraints]\n")
-	config.WriteString("[[category.constraints.module]]\n")
-	config.WriteString("name = \"constraints\"\n")
-	config.WriteString("source = \"constraints.md\"\n\n")
-
-	config.WriteString("[category.format]\n")
-	config.WriteString("[[category.format.module]]\n")
-	config.WriteString("name = \"format\"\n")
-	config.WriteString("source = \"format.md\"\n\n")
+	for _, category := range []string{"identity", "instructions", "constraints", "format"} {
+		writeStarterModule(".mogent/modules", category)
+		writeModuleConfig(config, category, category+".md", []string{category})
+	}
 
 	config.WriteString("[activate]\nscopes = []\n")
 }
@@ -89,10 +78,9 @@ func writeDefaults(config *strings.Builder) {
 func writeInteractive(config *strings.Builder) {
 	reader := bufio.NewReader(os.Stdin)
 	moduleDir := ".mogent/modules"
-	knownTags := make(map[string]bool)
 
-	fmt.Println("Mogent builds your AGENTS.md from smaller Markdown files.")
-	fmt.Println("Let's set up your sections and files.")
+	fmt.Println("Mogent builds your AGENTS.md from selectable Markdown heading blocks.")
+	fmt.Println("Let's set up your block modules.")
 	fmt.Println()
 
 	categories := promptCategoryList(reader)
@@ -107,18 +95,10 @@ func writeInteractive(config *strings.Builder) {
 	config.WriteString("]\n\n")
 
 	for _, cat := range categories {
-		writeCategorySection(config, reader, cat, moduleDir, knownTags)
+		writeCategorySection(config, reader, cat, moduleDir)
 	}
 
-	scopes := promptScopes(reader, knownTags)
-	config.WriteString("[activate]\nscopes = [")
-	for i, scope := range scopes {
-		if i > 0 {
-			config.WriteString(", ")
-		}
-		config.WriteString(fmt.Sprintf("\"%s\"", scope))
-	}
-	config.WriteString("]\n")
+	config.WriteString("[activate]\nscopes = []\n")
 }
 
 func promptCategoryList(reader *bufio.Reader) []string {
@@ -144,155 +124,107 @@ func promptCategoryList(reader *bufio.Reader) []string {
 	return cats
 }
 
-func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, moduleDir string, knownTags map[string]bool) {
-	fmt.Printf("\n--- %s ---\n", strings.Title(category))
+func writeCategorySection(config *strings.Builder, reader *bufio.Reader, category string, moduleDir string) {
+	fmt.Printf("\n--- %s ---\n", displayName(category))
 
-	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
+	// Intent: Configure one block-native module per category, replacing the old
+	// file/tag scan with immediate selectable block IDs. Source: DI-soviv
+	source := category + ".md"
+	path := filepath.Join(moduleDir, source)
+	writeStarterModule(moduleDir, category)
 
-	// Scan for existing files in this category
-	existingFiles := findModuleFiles(filepath.Join(moduleDir, category))
-	if len(existingFiles) > 0 {
-		fmt.Println("Existing files:")
-		for _, f := range existingFiles {
-			fmt.Printf("  - %s\n", filepath.Base(f))
-		}
-	} else {
-		fmt.Println("No files found yet.")
+	parsedModule, err := module.Parse(path)
+	if err != nil {
+		fmt.Printf("Could not inspect %s: %v\n", source, err)
+		writeModuleConfig(config, category, source, []string{category})
+		return
 	}
 
-	tags := promptTags(reader, "Only include this section when these tags are active (comma-separated, or empty for always)", knownTags)
-	if len(tags) > 0 {
-		config.WriteString("tags = [")
-		for i, t := range tags {
-			if i > 0 {
-				config.WriteString(", ")
-			}
-			config.WriteString(fmt.Sprintf("\"%s\"", t))
-			knownTags[t] = true
-		}
-		config.WriteString("]\n")
-	}
-
-	config.WriteString("\n")
-
-	for {
-		fmt.Printf("Add a file to '%s'? [Y/n]: ", category)
-		input, err := reader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		input = strings.TrimSpace(strings.ToLower(input))
-		if input == "n" || input == "no" {
-			break
-		}
-		if input != "" && input != "y" && input != "yes" {
-			fmt.Println("  Please enter y or n.")
+	var blockIDs []string
+	fmt.Printf("Module: %s\n", source)
+	for _, block := range parsedModule.Blocks {
+		if block.Metadata.ID == "" {
 			continue
 		}
-
-		fmt.Print("File name (e.g., 'coding-style'): ")
-		name, err := reader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		name = strings.TrimSpace(name)
-		if name == "" {
-			fmt.Println("  (skipped)")
-			continue
-		}
-
-		defaultSource := name + ".md"
-		fmt.Printf("Path [%s]: ", defaultSource)
-		source, err := reader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		source = strings.TrimSpace(source)
-		if source == "" {
-			source = defaultSource
-		}
-
-		config.WriteString(fmt.Sprintf("[[category.%s.module]]\n", category))
-		config.WriteString(fmt.Sprintf("name = \"%s\"\n", name))
-		config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
-
-		// Show tags from the file if it exists
-		filePath := filepath.Join(moduleDir, category, source)
-		fileTags := extractTagsFromFile(filePath)
-		if len(fileTags) > 0 {
-			fmt.Printf("  Tags found in file: %s\n", strings.Join(fileTags, ", "))
-		}
-
-		tags := promptTags(reader, fmt.Sprintf("Only include '%s' when these tags are active (comma-separated, or empty)", name), knownTags)
-		if len(tags) > 0 {
-			config.WriteString("tags = [")
-			for i, t := range tags {
-				if i > 0 {
-					config.WriteString(", ")
-				}
-				config.WriteString(fmt.Sprintf("\"%s\"", t))
-				knownTags[t] = true
-			}
-			config.WriteString("]\n")
-		}
-
-		config.WriteString("\n")
-	}
-}
-
-func promptTags(reader *bufio.Reader, prompt string, knownTags map[string]bool) []string {
-	if len(knownTags) > 0 {
-		fmt.Println("  Existing tags:")
-		printTagTree(knownTags)
+		blockIDs = append(blockIDs, block.Metadata.ID)
+		fmt.Printf("  - %-24s %s\n", block.Metadata.ID, block.Heading)
 	}
 
-	fmt.Printf("%s: ", prompt)
-	input, err := reader.ReadString('\n')
-	if err == io.EOF {
-		return nil
-	}
-	input = strings.TrimSpace(input)
-
-	if input == "" {
-		return nil
-	}
-
-	var tags []string
-	for _, t := range strings.Split(input, ",") {
-		t = strings.TrimSpace(t)
-		if t != "" {
-			tags = append(tags, t)
-		}
-	}
-	return tags
-}
-
-func promptScopes(reader *bufio.Reader, knownTags map[string]bool) []string {
-	fmt.Println("\n--- Active Scopes ---")
-	fmt.Println("Scopes filter which sections appear in your AGENTS.md.")
-	fmt.Println("For example, 'lang/go' only includes sections tagged with 'lang/go'.")
-	fmt.Println("Leave empty to include everything.")
-
-	if len(knownTags) > 0 {
-		fmt.Println("\nAvailable tags:")
-		printTagTree(knownTags)
-	}
-
-	fmt.Print("\nActive scopes (comma-separated, or empty): ")
-
+	defaultBlocks := []string{category}
+	fmt.Printf("Blocks [%s]: ", strings.Join(defaultBlocks, ","))
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
-
-	if input == "" {
-		return nil
+	if input != "" {
+		defaultBlocks = splitCSV(input)
+	}
+	if len(blockIDs) == 0 {
+		defaultBlocks = []string{category}
 	}
 
-	var scopes []string
-	for _, s := range strings.Split(input, ",") {
-		s = strings.TrimSpace(s)
-		if s != "" {
-			scopes = append(scopes, s)
+	writeModuleConfig(config, category, source, defaultBlocks)
+}
+
+func writeModuleConfig(config *strings.Builder, category string, source string, blocks []string) {
+	config.WriteString(fmt.Sprintf("[category.%s]\n", category))
+	config.WriteString(fmt.Sprintf("[[category.%s.module]]\n", category))
+	config.WriteString(fmt.Sprintf("name = \"%s\"\n", strings.TrimSuffix(source, ".md")))
+	config.WriteString(fmt.Sprintf("source = \"%s\"\n", source))
+	config.WriteString("blocks = [")
+	for i, block := range blocks {
+		if i > 0 {
+			config.WriteString(", ")
+		}
+		config.WriteString(fmt.Sprintf("\"%s\"", block))
+	}
+	config.WriteString("]\n\n")
+}
+
+func writeStarterModule(moduleDir string, category string) {
+	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+		fmt.Printf("Could not create %s: %v\n", moduleDir, err)
+		return
+	}
+
+	path := filepath.Join(moduleDir, category+".md")
+	if _, err := os.Stat(path); err == nil {
+		return
+	}
+
+	content := fmt.Sprintf(`# %s
+
+<!--
+agent_module:
+  id: %s
+  tldr: Starter %s instructions.
+-->
+Add %s instructions here.
+`, displayName(category), category, category, category)
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		fmt.Printf("Could not create %s: %v\n", path, err)
+	}
+}
+
+func splitCSV(input string) []string {
+	var values []string
+	for _, value := range strings.Split(input, ",") {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			values = append(values, value)
 		}
 	}
-	return scopes
+	return values
+}
+
+func displayName(value string) string {
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return r == '-' || r == '_' || r == '/'
+	})
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
 }
