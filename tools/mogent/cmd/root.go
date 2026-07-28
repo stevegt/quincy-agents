@@ -24,4 +24,5 @@ func init() {
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(tagsCmd)
+	rootCmd.AddCommand(tuiCmd)
 }
