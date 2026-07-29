@@ -71,6 +71,19 @@ Affects: tools/mogent/cmd/root.go, tools/mogent/cmd/tui.go, tools/mogent/go.mod,
 - [x] jusuk.9 List command - List available and active modules
 - [x] jusuk.10 Dogfood - Use mogent on this repo's AGENTS.md
 
+## Feature Backlog
+
+- [ ] Add TUI save support: persist selected blocks back to `AGENTS.toml`, show dirty/saved state, and avoid silent config rewrites.
+- [ ] Add TUI preview support: show rendered `AGENTS.md` output for the current in-memory selection before saving.
+- [ ] Add TUI diagnostics panel: surface missing files, duplicate IDs, empty selected blocks, unresolved references, and no-extension source hints in one place.
+- [ ] Add generated-output drift detection: warn when `AGENTS.md` was manually changed since the last build and offer an explicit handling path.
+- [ ] Add a richer diff model: compare selected block sets, rendered text, and similar blocks inside the same module instead of only section-level status.
+- [ ] Add presets/templates: save and load reusable selections for learning-heavy, fast-iteration, design-heavy, Nix/devshell, Rust/Godot, Rust/Python ML, and Obsidian/session-log workflows.
+- [ ] Add module library expansion: create reusable modules for tutor mode, TTS-friendly communication, architecture laws, strict testing, commit cadence, docs/session logs, and developer involvement levels.
+- [ ] Decide local-vs-global module storage: define whether project-specific changes stay in-repo, sync to a shared module library, or become explicit overrides.
+- [ ] Add import/merge workflow: help convert manually edited `AGENTS.md` changes into local modules, shared modules, or rejected drift.
+- [ ] Add tag/conflict support after the block model stabilizes: searchable tags, optional XOR groups, and conflict warnings for incompatible thinking/communication styles.
+
 ## Design References
 
 - docs/examples/DESIGN-SUMMARY.md - Final design decisions
