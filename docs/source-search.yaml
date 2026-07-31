@@ -1,0 +1,62 @@
+
+
+Most of our yaml files will look something like this, with some better syntax for * stuff:
+------
+sources:
+  # last one wins -- e.g. go sections override same-named sections in cswg or grid
+  - cswg: "http://github.com/ciwg/agents-templates/"
+  - grid: "http://github.com/promisegrid/agents-templates/"
+  - go: "http://github.com/myproject/agents-templates/"
+
+vars:
+
+doc:
+  - *: *:*  # come up with a better syntax
+-------
+
+
+JJ might want this in e.g. dev-guide:
+-------
+sources:
+  - grid: "http://github.com/myorg/agents-templates/"
+  - go: "http://github.com/myproject/agents-templates/"
+  - jj: "http://github.com/computerscienceiscool/agents-templates/"
+
+vars:
+
+doc:
+  - *: *:*
+-----------
+
+
+
+Private cdint repos might look like this:
+-----------
+sources:
+  - grid: "http://github.com/myorg/agents-templates/"
+  - go: "http://github.com/myproject/agents-templates/"
+  - cdint: "http://gitea.t7a.org/cdint/agents-templates/"
+
+vars:
+
+doc:
+  - *: *:*
+-----------
+
+
+
+This one overrides the team testings section with the org one:
+-----------
+
+sources:
+  - org: http://github.com/myorg/agents-templates/
+  - team: http://github.com/myproject/agents-templates/
+
+vars:
+
+doc:
+  - *: *:*
+  - heading: Instructions
+    children:
+      - Testings: org:instructions/testings
+-----------
