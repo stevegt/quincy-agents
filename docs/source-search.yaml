@@ -20,6 +20,7 @@ JJ might want this in e.g. dev-guide:
 sources:
   - grid: "http://github.com/myorg/agents-templates/"
   - go: "http://github.com/myproject/agents-templates/"
+  - dev-guide: ".mogent/dev-guide.md"  # this might contain the stuff from AGENTS-dev-guide.md
   - jj: "http://github.com/computerscienceiscool/agents-templates/"
 
 vars:
